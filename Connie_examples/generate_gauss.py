@@ -1,5 +1,7 @@
 # Before beginning, must execute:
 # ssh root@rp-f06b95.local "nohup systemctl start redpitaya_scpi &"
+# Generates gaussian wave from out1
+
 import redpitaya_scpi as scpi
 import sys
 import math

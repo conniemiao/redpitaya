@@ -48,7 +48,8 @@ buff_sent = buff_sent.strip('{}\n\r').replace("  ", "").split(',')
 buff_sent = list(map(float, buff_sent))
 print("len buff sent "+str(len(buff_sent)))
 rp.tx_txt('SOUR1:BURS:STAT ON')
-rp.tx_txt('SOUR1:BURS:NCYC 1')
+rp.tx_txt('SOUR1:BURS:NCYC 1') # num cycles
+rp.tx_txt('SOUR1:BURS:NOR 1') # num repeated bursts
 rp.tx_txt('OUTPUT1:STATE ON')
 # print("here")
 # time.sleep(3)
@@ -56,7 +57,7 @@ rp.tx_txt('OUTPUT1:STATE ON')
 
 # ========= set up acquisition trigger =========
 rp.tx_txt('ACQ:DEC ' + str(dec))
-rp.tx_txt('ACQ:TRIG:LEV ' + str(0.95*totalAmpl)) # centers point where voltage = level
+rp.tx_txt('ACQ:TRIG:LEV ' + str(0.50*totalAmpl)) # centers point where voltage = level
 rp.tx_txt('ACQ:TRIG:DLY 0') # number of samples delayed from center (max = 16384)
 # rp.tx_txt('ACQ:AVG ON')
 rp.tx_txt('ACQ:TRIG CH1_NE') # negative edge of input 1

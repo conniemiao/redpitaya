@@ -1,7 +1,12 @@
 # Before beginning, must execute:
 # ssh root@rp-f06b95.local "nohup systemctl start redpitaya_scpi &"
 # Send a guassian pulse from out1, acquire the pulse from in1 and on acquisition
-# triggers a sine wave from out2. Plot the acquired wave.
+# triggers a triangle wave burst from out2. Plot the acquired wave.
+# KNOWN BUGS:
+# 1. If there's a weird half pulse shape or extra gaussians showing up on acquisition
+# next to the main gaussian, repeating experiment or turning RP off and on again will fix it.
+# 2. Sometimes pulses will be acquired and plotted but not show up on scope,
+# repeat experiment one or two times and it will show up.
 import redpitaya_scpi as scpi
 import sys
 import math
@@ -27,13 +32,13 @@ freq = 3000
 volt = 1
 dec = 8
 totalAmpl = gaussAmpl*volt
+
+startPgmTime = time.time()
+
 rp.tx_txt('OUTPUT1:STATE OFF')
 rp.tx_txt('OUTPUT2:STATE OFF')
 rp.tx_txt('GEN:RST')
 rp.tx_txt('ACQ:RST')
-print("waiting")
-time.sleep(2)
-print("continuing")
 
 # ========= set up pulse from out1 =========
 rp.tx_txt('ACQ:BUF:SIZE?')
@@ -51,10 +56,10 @@ rp.tx_txt('SOUR1:TRAC:DATA:DATA?')
 buff_sent = rp.rx_txt()
 buff_sent = buff_sent.strip('{}\n\r').replace("  ", "").split(',')
 buff_sent = list(map(float, buff_sent))
-print("len buff sent "+str(len(buff_sent)))
+# print("len buff sent "+str(len(buff_sent)))
 rp.tx_txt('SOUR1:BURS:STAT ON')
 rp.tx_txt('SOUR1:BURS:NCYC 1')
-rp.tx_txt('OUTPUT1:STATE ON')
+rp.tx_txt('SOUR1:BURS:NOR 1') # num repeated bursts
 
 # ========= set up acquisition trigger =========
 trigVolt = 0.95
@@ -65,22 +70,34 @@ rp.tx_txt('ACQ:TRIG:DLY 0') # number of samples delayed from center (max = 16384
 rp.tx_txt('ACQ:TRIG CH1_NE') # negative edge of input 1
 
 # ========= set up out2 trigger =========
-rp.tx_txt('SOUR2:FUNC SIN')
+rp.tx_txt('SOUR2:FUNC TRIANGLE')
 rp.tx_txt('SOUR2:FREQ:FIX ' + str(freq))
 rp.tx_txt('SOUR2:VOLT ' + str(volt))
 rp.tx_txt('SOUR2:BURS:NCYC 2') # num periods (CYCles) in burst
 rp.tx_txt('SOUR2:BURS:NOR 12000') # num repeated bursts (<-> how long the burst will show up on the scope)
 rp.tx_txt('SOUR2:BURS:STAT ON') # turn on burst mode
-rp.tx_txt('OUTPUT2:STATE ON')
+
+finishSetupTime = time.time()
+print("Setup time: %f sec" % (finishSetupTime-startPgmTime))
 
 # ========= burst, record, and wait to trigger out2 =========
 rp.tx_txt('ACQ:START')
+rp.tx_txt('OUTPUT1:STATE ON')
 rp.tx_txt('SOUR1:TRIG:IMM') #  start source 1 burst
+rp.tx_txt('OUTPUT2:STATE ON')
 rp.tx_txt('SOUR2:TRIG:SOUR EXT') #  start out2 burst based on in1
 
-while True: # wait for buffer to fill
+print("Waiting for trigger.")
+trigStartTime = time.time()
+while True: # wait up to 5 sec for buffer to fill
     rp.tx_txt('ACQ:TRIG:STAT?')
-    if rp.rx_txt() == 'TD': break
+    if rp.rx_txt() == 'TD':
+        trigAcqTime = time.time()
+        break
+    if time.time()-trigStartTime > 5:
+        print("Failed to trigger, exiting.")
+        exit(0)
+print("Triggered in %f sec" % (trigAcqTime-trigStartTime))
 rp.tx_txt('ACQ:TRIG:LEV?') # returns what level was actually acquired at
 print("level: " + rp.rx_txt())
 rp.tx_txt('ACQ:TRIG:DLY?') # returns what dly was actually acquired at
@@ -91,7 +108,7 @@ rp.tx_txt('ACQ:SOUR1:DATA?')
 buff_acq = rp.rx_txt()
 buff_acq = buff_acq.strip('{}\n\r').replace("  ", "").split(',')
 buff_acq = list(map(float, buff_acq))
-print("len buff acq "+str(len(buff_acq)))
+# print("len buff acq "+str(len(buff_acq)))
 buffTime = decToTimeScale[dec]
 numPeriodsInBuf = freq*buffTime
 print("num periods in buffer %i" % numPeriodsInBuf)
