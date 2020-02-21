@@ -79,44 +79,46 @@ finishSetupTime = time.time()
 print("Setup time: %f sec" % (finishSetupTime-startPgmTime))
 
 # ========= acquire =========
-rp.tx_txt('ACQ:START') # need to wait 1 sec after starting acq to clear buffer
-time.sleep(1)
-
-print("Waiting for trigger.")
-trigStartTime = time.time()
-while True: # wait up to 5 sec for buffer to fill
-    rp.tx_txt('ACQ:TRIG:STAT?')
-    if rp.rx_txt() == 'TD':
-        trigAcqTime = time.time()
-        break
-#     if time.time()-trigStartTime > 5:
-#         print("Failed to trigger, exiting.")
-#         exit(0)
-print("Triggered in %f sec" % (trigAcqTime-trigStartTime))
-# rp.tx_txt('ACQ:TRIG:LEV?') # returns what level was actually acquired at
-# print("level: " + rp.rx_txt())
-# rp.tx_txt('ACQ:TRIG:DLY?') # returns what dly was actually acquired at
-# print("delay: " + rp.rx_txt())
-
-
-# ========= make decision and output =========
-rp.tx_txt('ACQ:SOUR1:DATA?')
-buff_acq = rp.rx_txt()
-buff_acq = buff_acq.strip('{}\n\r').replace("  ", "").split(',')
-buff_acq = list(map(float, buff_acq))
-# print("len buff acq "+str(len(buff_acq)))
-
-voltIn = findSqHeight(buff_acq)
-print("Volt in: %f " % voltIn)
-if voltIn < inVoltThresh:
-    voltOut = outVoltHi
-    print("Sending hi (0.75V)")
-else:
-    voltOut = outVoltLo
-    print("Sending lo (0.25V)")
-rp.tx_txt('SOUR2:VOLT ' + str(voltOut))
-rp.tx_txt('OUTPUT2:STATE ON')
-
-# time.sleep(2)
-# rp.tx_txt('OUTPUT2:STATE OFF')
+while True:
+    rp.tx_txt('ACQ:START') # need to wait 1 sec after starting acq to clear buffer
+    time.sleep(1)
+    
+    print("Waiting for trigger.")
+    trigStartTime = time.time()
+    while True:
+        rp.tx_txt('ACQ:TRIG:STAT?')
+        if rp.rx_txt() == 'TD':
+            trigAcqTime = time.time()
+            break
+    print("Triggered in %f sec" % (trigAcqTime-trigStartTime))
+    # rp.tx_txt('ACQ:TRIG:LEV?') # returns what level was actually acquired at
+    # print("level: " + rp.rx_txt())
+    # rp.tx_txt('ACQ:TRIG:DLY?') # returns what dly was actually acquired at
+    # print("delay: " + rp.rx_txt())
+    
+    
+    # ========= make decision and output =========
+    rp.tx_txt('ACQ:SOUR1:DATA?')
+    buff_acq = rp.rx_txt()
+    buff_acq = buff_acq.strip('{}\n\r').replace("  ", "").split(',')
+    buff_acq = list(map(float, buff_acq))
+    # print("len buff acq "+str(len(buff_acq)))
+    
+    voltIn = findSqHeight(buff_acq)
+    print("Volt in: %f " % voltIn)
+    if voltIn < inVoltThresh:
+        voltOut = outVoltHi
+        print("Sending hi (0.75V)")
+    else:
+        voltOut = outVoltLo
+        print("Sending lo (0.25V)")
+    rp.tx_txt('SOUR2:VOLT ' + str(voltOut))
+    rp.tx_txt('OUTPUT2:STATE ON')
+    
+    time.sleep(2)
+    rp.tx_txt('OUTPUT2:STATE OFF')
+    rp.tx_txt('ACQ:RST')
+    rp.tx_txt('ACQ:TRIG CH1_NE') # this needs to be sent again to reset ACQ state
+    # rp.tx_txt('ACQ:TRIG:STAT?')
+    # print(rp.rx_txt())
 
