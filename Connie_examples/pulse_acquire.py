@@ -62,9 +62,9 @@ rp.tx_txt('ACQ:TRIG:DLY 0') # number of samples delayed from center (max = 16384
 # rp.tx_txt('ACQ:AVG ON')
 rp.tx_txt('ACQ:TRIG CH1_NE') # negative edge of input 1
 
-# time.sleep(1)
 # ========= burst and record =========
 rp.tx_txt('ACQ:START')
+time.sleep(1)
 rp.tx_txt('SOUR1:TRIG:IMM') #  start source 1 burst
 
 while True: # wait for buffer to fill
