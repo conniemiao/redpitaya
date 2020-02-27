@@ -32,6 +32,7 @@ gaussAmpl = 1
 freq = 3000
 volt = 1
 dec = 8
+buffTime = decToTimeScale[dec]
 totalAmpl = gaussAmpl*volt
 
 startPgmTime = time.time()
@@ -91,8 +92,8 @@ finishSetupTime = time.time()
 print("Setup time: %f sec" % (finishSetupTime-startPgmTime))
 
 # ========= burst, record, and wait to trigger out2 =========
-rp.tx_txt('ACQ:START') # need to wait 1 sec after starting acq to clear buffer
-time.sleep(1)
+rp.tx_txt('ACQ:START') # need to wait after starting acq to clear buffer
+time.sleep(buffTime)
 rp.tx_txt('OUTPUT1:STATE ON')
 
 print("Waiting for trigger.")
@@ -119,7 +120,6 @@ buff_acq = rp.rx_txt()
 buff_acq = buff_acq.strip('{}\n\r').replace("  ", "").split(',')
 buff_acq = list(map(float, buff_acq))
 # print("len buff acq "+str(len(buff_acq)))
-buffTime = decToTimeScale[dec]
 numPeriodsInBuf = freq*buffTime
 print("num periods in buffer %i" % numPeriodsInBuf)
 x = np.arange(buffTime, step=buffTime/BUFF_SIZE)
